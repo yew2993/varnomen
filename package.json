@@ -1,0 +1,15 @@
+{
+  "name": "varnomen",
+  "version": "1.0.0",
+  "description": "Tool for working with varnomen nomenclature",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Yedidyah Weiss",
+  "license": "ISC",
+  "dependencies": {
+    "console.table": "^0.10.0",
+    "xregexp": "^4.2.4"
+  }
+}
