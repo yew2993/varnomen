@@ -1,61 +1,111 @@
 require('console.table');
-let {is} = require("./cdna");
+let cDNA = require("./cdna"), {is} = cDNA;
+let cases = require("./testData");
 
-let cases = [
-  {mut: "c.500G>A", expected: "substitution"},
-  {mut: "c.93+1G>T", expected: "substitution"},
-  {mut: "c.3921del", expected: "deletion"},
-  {mut: "c.186del", expected: "deletion"},
-  {mut: "c.183_186+48del", expected: "deletion"},
-  {mut: "c.186+5_7del", expected: "deletion"},
-  {mut: "c.185_186+5_7del", expected: null}, //fails
-  {mut: "c.185_186+7del", expected: "deletion"},
-  {mut: "c.1704+1del", expected: "deletion"},
-  {mut: "c.1813del", expected: "deletion"},
-  {mut: "c.4072-1234_5155-246del", expected: "deletion"},
-  {mut: "c.(4071+1_4072-1)_(5154+1_5155-1)del", expected: "deletion"}, //fails 
-  // duplications
-  {mut: "c.20dup", expected: "duplication"},
-  {mut: "c.20_23dup", expected: "duplication"},
-  {mut: "c.260_264+48dup", expected: "duplication"},
-  {mut: "c.1704+1dup", expected: "duplication"},
-  {mut: "c.1813dup", expected: "duplication"},
-  {mut: "c.4072-1234_5155-246dup", expected: "duplication"},
-  {mut: "c.720_991dup", expected: "duplication"},
-  {mut: "c.(4071+1_4072-1)_(5154+1_5155-1)dup", expected: "duplication"},
-  // insertions
-  {mut: "c.169_170insA", expected: "insertion"},
-  {mut: "c.240_241insAGG", expected: "insertion"},
-  {mut: "c.849_850ins858_895", expected: "insertion"},
-  // complex insertions
-  {mut: "c.419_420ins[T;401_419]", expected: "insertion"},
-  {mut: "c.419_420ins[T;450_470;AGGG]", expected: "insertion"},
-  // insertion of inverted duplicated copies
-  {mut: "c.849_850ins850_900inv", expected: "insertion"},
-  {mut: "c.900_901ins850_900inv", expected: "insertion"},
-  {mut: "c.940_941ins[885_940inv;A;851_883inv]", expected: "insertion"},
-  {mut: "c.940_941ins[903_940inv;851_885inv]", expected: "insertion"},
-  // inversions
-  {mut: "c.5657_5660inv", expected: "inversion"},
-  {mut: "c.4145_4160inv", expected: "inversion"},
-  // deletion-insertions
-  {mut: "c.6775delinsGA", expected: "deletion_insertion"},
-  {mut: "c.6775_6777delinsC", expected: "deletion_insertion"},
-  {mut: "c.142_144delinsTGG", expected: "deletion_insertion"},
-  {mut: "c.9002_9009delinsTTT", expected: "deletion_insertion"},
-  {mut: "c.583_589delTTTTTTAinsATTTTTG", expected: "deletion_insertion"},
-  // regulatory
-  {mut: "c.-26-183G>A", expected: "regulatory"},
+console.table(checkExpectedTypes(cases));
+// console.table(checkNucleotideCounts(cases));
+// console.table(breakItDown(cases))
+// console.table(posFull(cases))
 
-]
+function checkExpectedTypes(cases) {
+  return cases.map(({mut, expectedType}) => {
+    let row = {mut, expectedType, result: ""};
+    for (let key in is) {
+      row[key] = is[key](mut);
+    }
+    row.result = row[row.expectedType] ? "PASS" : "fail"
+    return row;
+  })
+}
 
-cases = cases.map(({mut, expected}) => {
-  let row = {mut, expected, result: ""};
-  for (let key in is) {
-    // console.log(key)
-    row[key] = is[key](mut);
-  }
-  row.result = row[row.expected] ? "PASS" : "FAIL"
-  return row;
-})
-console.table(cases);
+function checkNucleotideCounts(cases) {
+  return cases.map(({mut, expectedCount}) => ({mut, expectedCount, nucs: cDNA.countNucleotides(mut)}))
+}
+
+function breakItDown(cases) {
+  return cases.map(({mut}, index) => {
+    let {position, mutation} = cDNA.parse(mut, {patternName: "template"});
+    let {
+      pos_prefix, pos, pos_suffix,
+      pos_end_prefix, pos_end, pos_end_suffix
+    } = cDNA.parse(position, {patternName: "interval"});
+    let {
+      wt_nuc,count_change_mut_type,count_change_sequence,
+      new_nuc_mut_type,new_nuc_sequence
+    } = cDNA.parse(mutation, {patternName: "mutation"});
+    return {
+      mut,
+      Mut: mutation,
+      Pos: position,
+      Prfx1: pos_prefix,
+      Pos1: pos,
+      Sffx1: pos_suffix,
+      Prfx2: pos_end_prefix,
+      Pos2: pos_end,
+      Sffx2: pos_end_suffix,
+      WT: wt_nuc,
+      MutType1: count_change_mut_type,
+      MutSeq1: count_change_sequence,
+      MutType2: new_nuc_mut_type,
+      MutSeq2: new_nuc_sequence,
+      nucs: cDNA.countNucleotides(mut)
+    }
+  })
+}
+function posFull(cases) {
+  return cases.map(({mut}) => {
+    let {position} = cDNA.parse(mut, {patternName: "template"});
+    let {
+      open_parens, 
+      pos_prefix, pos, pos_suffix, 
+      pos_end_prefix, pos_end, pos_end_suffix,
+      close_parens,
+      open_second_parens, 
+      second_pos_prefix, second_pos, second_pos_suffix,
+      second_pos_end_prefix, second_pos_end, second_pos_end_suffix,
+      close_second_parens
+    } = cDNA.parse(position, {patternName: "posFull"});
+    return {
+      Pos: position,
+      "1(": open_parens,
+      Prfx1: pos_prefix,
+      Pos1: pos,
+      Sffx1: pos_suffix,
+      Prfx2: pos_end_prefix,
+      Pos2: pos_end,
+      Sffx2: pos_end_suffix,
+      ")2": close_parens,
+      "3(": open_second_parens,
+      Sec_Prfx1: second_pos_prefix,
+      Sec_Pos1: second_pos,
+      Sec_Sffx1: second_pos_suffix,
+      Sec_Prfx2: second_pos_end_prefix,
+      Sec_Pos2: second_pos_end,
+      Sec_Sffx2: second_pos_end_suffix,
+      ")4": close_second_parens,
+    }
+  })
+}
+
+// {
+//   i1_p1_open,
+//   i1_p1_prefix,
+//   i1_p1_pos,
+//   i1_p1_suffix,
+//   i1_p1_close,
+//   i1_p2_open,
+//   i1_p2_prefix,
+//   i1_p2_pos,
+//   i1_p2_suffix,
+//   i1_p2_close,
+//   i2_p1_open,
+//   i2_p1_prefix,
+//   i2_p1_pos,
+//   i2_p1_suffix,
+//   i2_p1_close,
+//   i2_p1_open,
+//   i2_p1_prefix,
+//   i2_p1_pos,
+//   i2_p1_suffix,
+//   i2_p1_close,
+// }
