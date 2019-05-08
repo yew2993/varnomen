@@ -1,0 +1,5 @@
+.git
+package-lock.json
+node_modules
+result.json
+src/testResults.json
